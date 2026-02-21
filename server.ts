@@ -339,6 +339,12 @@ Bun.serve({
     }
 
     // Static files
+    // Serve sitemap and robots from static dir
+    if (url.pathname === "/sitemap.xml" || url.pathname === "/robots.txt") {
+      const staticRes = await serveStatic("/static" + url.pathname);
+      if (staticRes) return staticRes;
+    }
+
     if (url.pathname.startsWith("/static/") || url.pathname.startsWith("/.well-known/")) {
       const staticRes = await serveStatic(url.pathname);
       if (staticRes) return staticRes;
@@ -350,7 +356,11 @@ Bun.serve({
       "/docs": "docs.html",
       "/signup": "signup.html",
       "/pricing": "pricing.html",
-      // {{EXTRA_ROUTES}}
+            "/blog/social-media-mcp-server": "blog/social-media-mcp-server.html",
+      "/tools/analyze-profile": "tools/analyze-profile.html",
+      "/tools/score-engagement": "tools/score-engagement.html",
+      "/tools/detect-trends": "tools/detect-trends.html",
+      "/tools/research-hashtags": "tools/research-hashtags.html",
     };
 
     const pageName = PAGE_ROUTES[url.pathname];
