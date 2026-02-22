@@ -66,9 +66,9 @@ function createMcpServer(): McpServer {
     "analyze_profile",
     "Analyze a social media profile or brand presence — posting patterns, content themes, audience indicators, and growth recommendations.",
     {
-      username: z.string().describe("Social media username or handle"),
-      platform: z.string().optional().describe("Platform (twitter, instagram, linkedin, facebook, tiktok)"),
-      business_name: z.string().optional().describe("Business name for broader search")
+      username: z.string().describe("Social media username or handle (e.g., '@hubspot')"),
+      platform: z.enum(["twitter", "instagram", "linkedin", "facebook", "tiktok"]).optional().describe("Social media platform to analyze"),
+      business_name: z.string().optional().describe("Business name for broader cross-platform search")
     },
     async (params) => {
       const result = await analyzeProfile(params);
@@ -80,8 +80,8 @@ function createMcpServer(): McpServer {
     "score_engagement",
     "Score social media engagement for a brand or topic — engagement rate estimates, content type effectiveness, posting time analysis, and benchmarks.",
     {
-      brand_or_topic: z.string().describe("Brand name or topic to analyze"),
-      platform: z.string().optional().describe("Platform to focus on (optional, analyzes all if omitted)")
+      brand_or_topic: z.string().describe("Brand name or topic to analyze (e.g., 'Nike', 'AI marketing')"),
+      platform: z.enum(["twitter", "instagram", "linkedin", "facebook", "tiktok"]).optional().describe("Platform to focus on (analyzes all if omitted)")
     },
     async (params) => {
       const result = await scoreEngagement(params);
@@ -93,8 +93,8 @@ function createMcpServer(): McpServer {
     "detect_trends",
     "Detect trending topics and conversations in a niche — viral content patterns, emerging topics, sentiment shifts, and opportunity alerts.",
     {
-      niche: z.string().describe("Industry or niche to monitor"),
-      timeframe: z.string().optional().describe("Timeframe: today, this_week, this_month")
+      niche: z.string().describe("Industry or niche to monitor (e.g., 'AI marketing', 'fitness')"),
+      timeframe: z.enum(["today", "this_week", "this_month"]).optional().describe("Timeframe for trend analysis (default: this_week)")
     },
     async (params) => {
       const result = await detectTrends(params);
@@ -106,9 +106,9 @@ function createMcpServer(): McpServer {
     "research_hashtags",
     "Research effective hashtags for a topic — popularity estimates, related hashtags, niche vs broad classification, and recommended hashtag sets.",
     {
-      topic: z.string().describe("Topic or keyword for hashtag research"),
-      platform: z.string().optional().describe("Target platform (instagram, twitter, tiktok, linkedin)"),
-      count: z.number().optional().describe("Number of hashtags to return (default 20)")
+      topic: z.string().describe("Topic or keyword for hashtag research (e.g., 'real estate', 'fitness')"),
+      platform: z.enum(["instagram", "twitter", "tiktok", "linkedin"]).optional().describe("Target platform for hashtag optimization"),
+      count: z.number().min(1).max(50).optional().describe("Number of hashtags to return (default: 20, max: 50)")
     },
     async (params) => {
       const result = await researchHashtags(params);
@@ -230,8 +230,8 @@ Bun.serve({
       }, { headers: corsHeaders });
     }
 
-    // MCP endpoint
-    if (url.pathname === "/mcp") {
+    // MCP endpoint — accept on /mcp and also on / for POST (Smithery/scanners)
+    if (url.pathname === "/mcp" || (url.pathname === "/" && req.method === "POST")) {
       const apiKey = req.headers.get("x-api-key") || url.searchParams.get("api_key");
 
       let authResult: { valid: boolean; error?: string; tier?: string; name?: string } = { valid: false };
