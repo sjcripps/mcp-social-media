@@ -1,10 +1,13 @@
 startCommand:
-  type: stdio
-  configSchema:
-    type: object
-    properties:
-      apiKey:
-        type: string
-        description: "Your EzBiz Services API key"
-    required:
-      - apiKey
+  type: http
+configSchema:
+  type: object
+  required:
+    - apiKey
+  properties:
+    apiKey:
+      type: string
+      title: "API Key"
+      description: "Your EzBiz Services API key. Get a free key at https://social.ezbizservices.com"
+exampleConfig:
+  apiKey: "your-api-key-here"
