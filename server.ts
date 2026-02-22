@@ -15,7 +15,7 @@ import { detectTrends } from "./tools/trend-detection";
 import { researchHashtags } from "./tools/hashtag-research";
 
 const PORT = parseInt(process.env.MCP_PORT || "4202");
-const BASE_DIR = import.meta.dir;
+const BASE_DIR = import.meta.dir || process.cwd();
 
 // --- Page cache ---
 const pageCache: Record<string, string> = {};
@@ -119,14 +119,19 @@ function createMcpServer(): McpServer {
   return server;
 }
 
+// Export for Smithery tool scanning (no real credentials needed)
+export function createSandboxServer() {
+  return createMcpServer();
+}
+
 // --- Session management ---
 const transports: Record<
   string,
   { transport: WebStandardStreamableHTTPServerTransport; apiKey: string }
 > = {};
 
-// --- Bun HTTP server ---
-Bun.serve({
+// --- Bun HTTP server (guarded for Smithery scanner compatibility) ---
+if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
@@ -378,7 +383,7 @@ Bun.serve({
   },
 });
 
-console.log(`MCP Social Media Analytics server running on port ${PORT}`);
+if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) console.log(`MCP Social Media Analytics server running on port ${PORT}`);
 
 process.on("SIGINT", async () => {
   console.log("Shutting down...");
