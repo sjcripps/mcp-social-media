@@ -3,12 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Get API Key — EzBiz Social Media Analytics</title>
+  <title>Blog — EzBiz Social Media Analytics MCP Server</title>
+  <meta name="description" content="Articles about AI-powered social media analytics, engagement scoring, trend detection, and MCP tools.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://social.ezbizservices.com/blog">
+  <meta property="og:title" content="Blog — EzBiz Social Media Analytics">
+  <meta property="og:description" content="Articles about AI-powered social media analytics, engagement scoring, trend detection, and MCP tools.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://social.ezbizservices.com/blog">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css?v=2">
+  <style>
+    .blog-list { max-width: 720px; margin: 0 auto; padding: 40px 24px 60px; }
+    .blog-list h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 8px; }
+    .blog-list .subtitle { color: var(--text-muted); margin-bottom: 32px; }
+    .post-card { display: block; padding: 24px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; text-decoration: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .post-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(99, 102, 241, 0.1); }
+    .post-card h2 { font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .post-card p { color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 8px; }
+    .post-card .meta { color: var(--text-muted); font-size: 0.8rem; }
+  </style>
 </head>
 <body>
+
 <nav>
   <div class="container">
     <a href="/" class="logo"><span>EzBiz</span> Social Media Analytics</a>
@@ -45,47 +63,31 @@
     </div>
   </div>
 </nav>
-<div class="container signup-container">
-  <h1>Get Your Free API Key</h1>
-  <p>10 requests/month on the free tier. No credit card required.</p>
-  <form id="signup-form" class="signup-form">
-    <input type="text" id="name" placeholder="Your name" required>
-    <input type="email" id="email" placeholder="Email address" required>
-    <button type="submit" class="btn btn-primary">Get API Key</button>
-  </form>
-  <div id="result" class="result hidden"></div>
+
+<div class="blog-list">
+  <h1>Blog</h1>
+  <p class="subtitle">Articles about AI-powered social media analytics and MCP tools</p>
+
+  <!-- BLOG_POSTS_START -->
+  <a href="/blog/how-to-analyze-social-media-profile-ai" class="post-card">
+    <h2>How to Analyze Any Social Media Profile with AI</h2>
+    <p>Learn how to analyze any social media profile using AI — posting patterns, audience signals, content themes, and growth opportunities. Free tool included.</p>
+    <span class="meta">February 23, 2026</span>
+  </a>
+  <a href="/blog/social-media-mcp-server" class="post-card">
+    <h2>Social Media Analytics MCP Server — AI-Powered Social Media Tools</h2>
+    <p>AI-powered social media profile analysis, engagement scoring, trend detection, and hashtag research.</p>
+    <span class="meta">February 21, 2026</span>
+  </a>
+  <!-- BLOG_POSTS_END -->
 </div>
-<script>
-document.getElementById('signup-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('name').value;
-  const email = document.getElementById('email').value;
-  const result = document.getElementById('result');
-  try {
-    const res = await fetch('/api/keys/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      var heading = data.recovered ? 'Welcome back! Here\u2019s your API key' : 'Your API Key';
-      var msg = data.recovered
-        ? 'You\u2019re on the <strong>' + data.tier + '</strong> tier (' + data.used + '/' + data.limit + ' requests used this month). See the <a href="/docs">docs</a> to connect.'
-        : 'Save this key \u2014 it won\'t be shown again. Free tier: ' + data.limit + ' requests/month.';
-      result.innerHTML = '<h3>' + heading + '</h3><code class="api-key">' + data.key + '</code><p>' + msg + '</p>';
-      result.className = 'result success';
-    } else {
-      result.innerHTML = '<p>' + (data.error || 'Something went wrong') + '</p>';
-      result.className = 'result error';
-    }
-  } catch (err) {
-    result.innerHTML = '<p>Network error. Please try again.</p>';
-    result.className = 'result error';
-  }
-});
-</script>
-<footer><div class="container"><p>&copy; 2026 EzBiz Services.</p></div></footer>
+
+<footer>
+  <div class="container">
+    <p>&copy; 2026 EzBiz Services. Built with the Model Context Protocol.</p>
+  </div>
+</footer>
+
 <script>
 (function(){
   var trigger = document.querySelector('.mega-trigger');

@@ -1,19 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "com.ezbizservices/social-media",
+  "name": "io.github.sjcripps/social-media",
   "title": "EzBiz Social Media Analytics",
-  "description": "AI-powered social media intelligence: profile analysis, engagement scoring, trend detection, and hashtag research across major platforms.",
+  "description": "AI social media analytics: profiles, engagement, trends, hashtags across platforms",
   "version": "1.0.0",
   "websiteUrl": "https://social.ezbizservices.com",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/sjcripps/mcp-social-media/main/static/icon.svg",
+      "src": "https://raw.githubusercontent.com/ezbiz-services/mcp-social-media/main/static/icon.svg",
       "mimeType": "image/svg+xml",
       "sizes": ["200x200"]
     }
   ],
   "repository": {
-    "url": "https://github.com/sjcripps/mcp-social-media",
+    "url": "https://github.com/ezbiz-services/mcp-social-media",
     "source": "github"
   },
   "remotes": [

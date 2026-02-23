@@ -9,5 +9,6 @@ configSchema:
       type: string
       title: "API Key"
       description: "Your EzBiz Services API key. Get a free key at https://social.ezbizservices.com"
+      x-from: header
 exampleConfig:
   apiKey: "your-api-key-here"
