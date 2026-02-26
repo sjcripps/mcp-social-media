@@ -3,6 +3,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
 import { validateApiKey, recordUsage, createApiKey, getKeyByEmail, upgradeKey, getKeyUsage, TIER_LIMITS, TIER_PRICES } from "./lib/auth";
@@ -14,6 +15,9 @@ import { analyzeProfile } from "./tools/profile-analysis";
 import { scoreEngagement } from "./tools/engagement-scoring";
 import { detectTrends } from "./tools/trend-detection";
 import { researchHashtags } from "./tools/hashtag-research";
+// Pro/Business tier tools
+import { generateContentCalendar } from "./tools/content-calendar";
+import { benchmarkCompetitors } from "./tools/competitor-benchmarks";
 
 const PORT = parseInt(process.env.MCP_PORT || "4202");
 const BASE_DIR = import.meta.dir || process.cwd();
@@ -32,7 +36,11 @@ const MIME_TYPES: Record<string, string> = {
 
 async function loadPage(name: string): Promise<string> {
   if (pageCache[name]) return pageCache[name];
-  const content = await readFile(join(BASE_DIR, "pages", name), "utf-8");
+  let content = await readFile(join(BASE_DIR, "pages", name), "utf-8");
+  content = content.replace(/style\.css\?v=\d+/g, 'style.css?v=3');
+  if (content.includes('</body>')) {
+    content = content.replace('</body>', '<script src="/static/nav.js"></script>\n</body>');
+  }
   pageCache[name] = content;
   return content;
 }
@@ -57,7 +65,7 @@ async function serveStatic(pathname: string): Promise<Response | null> {
 }
 
 // --- MCP Server factory ---
-function createMcpServer(): McpServer {
+function createMcpServer(tier: string = "free"): McpServer {
   const server = new McpServer({
     name: "ezbiz-social-media",
     version: "1.0.0",
@@ -72,7 +80,7 @@ function createMcpServer(): McpServer {
       business_name: z.string().optional().describe("Business name for broader cross-platform search")
     },
     async (params) => {
-      const result = await analyzeProfile(params);
+      const result = await analyzeProfile({ ...params, tier });
       return { content: [{ type: "text", text: result }] };
     }
   );
@@ -85,7 +93,7 @@ function createMcpServer(): McpServer {
       platform: z.enum(["twitter", "instagram", "linkedin", "facebook", "tiktok"]).optional().describe("Platform to focus on (analyzes all if omitted)")
     },
     async (params) => {
-      const result = await scoreEngagement(params);
+      const result = await scoreEngagement({ ...params, tier });
       return { content: [{ type: "text", text: result }] };
     }
   );
@@ -98,7 +106,7 @@ function createMcpServer(): McpServer {
       timeframe: z.enum(["today", "this_week", "this_month"]).optional().describe("Timeframe for trend analysis (default: this_week)")
     },
     async (params) => {
-      const result = await detectTrends(params);
+      const result = await detectTrends({ ...params, tier });
       return { content: [{ type: "text", text: result }] };
     }
   );
@@ -112,7 +120,48 @@ function createMcpServer(): McpServer {
       count: z.number().min(1).max(50).optional().describe("Number of hashtags to return (default: 20, max: 50)")
     },
     async (params) => {
-      const result = await researchHashtags(params);
+      const result = await researchHashtags({ ...params, tier });
+      return { content: [{ type: "text", text: result }] };
+    }
+  );
+
+  // --- Pro/Business tier tools ---
+  const PRO_TIERS = ["pro", "business"];
+  const upgradeMsg = (toolName: string) =>
+    `🔒 ${toolName} requires a Pro or Business tier subscription.\n\nUpgrade at https://social.ezbizservices.com/pricing to unlock advanced social media tools including content calendars, competitor benchmarks, and more.`;
+
+  // Tool 5: Content Calendar (Pro+)
+  server.tool(
+    "content_calendar",
+    "🔒 [Pro] Generate a detailed social media content calendar — specific posts with captions, hashtags, optimal timing, and content templates for 1-4 weeks.",
+    {
+      business_or_niche: z.string().describe("Business name or niche (e.g., 'fitness brand', 'Acme Plumbing')"),
+      platforms: z.string().optional().describe("Comma-separated platforms (default: 'instagram,twitter,linkedin')"),
+      duration: z.enum(["1_week", "2_weeks", "1_month"]).optional().describe("Calendar duration (default: 2_weeks)")
+    },
+    async (params) => {
+      if (!PRO_TIERS.includes(tier)) {
+        return { content: [{ type: "text", text: upgradeMsg("Content Calendar") }] };
+      }
+      const result = await generateContentCalendar({ ...params, tier });
+      return { content: [{ type: "text", text: result }] };
+    }
+  );
+
+  // Tool 6: Competitor Benchmarks (Pro+)
+  server.tool(
+    "competitor_benchmarks",
+    "🔒 [Pro] Benchmark your social media against competitors — side-by-side comparison of engagement, content strategy, audience growth, and competitive gaps.",
+    {
+      brand: z.string().describe("Your brand name"),
+      competitors: z.string().describe("Comma-separated competitor names (e.g., 'Nike,Adidas,Puma')"),
+      platform: z.enum(["twitter", "instagram", "linkedin", "facebook", "tiktok"]).optional().describe("Platform to focus on (analyzes all if omitted)")
+    },
+    async (params) => {
+      if (!PRO_TIERS.includes(tier)) {
+        return { content: [{ type: "text", text: upgradeMsg("Competitor Benchmarks") }] };
+      }
+      const result = await benchmarkCompetitors({ ...params, tier });
       return { content: [{ type: "text", text: result }] };
     }
   );
@@ -132,7 +181,14 @@ const transports: Record<
 > = {};
 
 // --- Bun HTTP server (guarded for Smithery scanner compatibility) ---
-if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
+// --- Stdio transport for MCP inspectors (Glama, CLI clients) ---
+if (process.argv.includes("--stdio")) {
+  const server = createMcpServer("free");
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+}
+// --- Bun HTTP server (guarded for Smithery scanner compatibility) ---
+else if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
@@ -255,7 +311,33 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
 
     // MCP endpoint — accept on /mcp and also on / for POST (Smithery/scanners)
     if (url.pathname === "/mcp" || (url.pathname === "/" && req.method === "POST")) {
-      // Accept API key from multiple sources for proxy compatibility (Smithery, Claude, etc.)
+      const sessionId = req.headers.get("mcp-session-id");
+
+      // --- GET/DELETE: session-based operations (SSE stream / session close) ---
+      // Part of the MCP Streamable HTTP protocol. Session was authenticated during POST.
+      if (req.method === "GET") {
+        if (sessionId && transports[sessionId]) {
+          console.log(`[MCP] GET SSE stream | session: ${sessionId}`);
+          return transports[sessionId].transport.handleRequest(req);
+        }
+        return Response.json(
+          { jsonrpc: "2.0", error: { code: -32000, message: "Bad request: GET requires a valid mcp-session-id. Start with POST." }, id: null },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+
+      if (req.method === "DELETE") {
+        if (sessionId && transports[sessionId]) {
+          console.log(`[MCP] DELETE session | session: ${sessionId}`);
+          return transports[sessionId].transport.handleRequest(req);
+        }
+        return Response.json(
+          { jsonrpc: "2.0", error: { code: -32000, message: "Session not found" }, id: null },
+          { status: 404, headers: corsHeaders }
+        );
+      }
+
+      // --- POST: API key auth (accept from multiple sources for proxy compatibility) ---
       const bearerToken = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
       const apiKey =
         req.headers.get("x-api-key") ||
@@ -267,39 +349,30 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
 
       // Debug logging
       const qp = url.search || "none";
-      console.log(`[MCP] ${req.method} ${url.pathname} | auth: ${bearerToken ? "Bearer " + bearerToken.slice(0, 12) + "..." : "none"} | x-api-key: ${req.headers.get("x-api-key") ? "yes" : "no"} | apikey-hdr: ${req.headers.get("apikey") ? "yes" : "no"} | query: ${qp} | session: ${req.headers.get("mcp-session-id") || "none"}`);
+      console.log(`[MCP] POST ${url.pathname} | auth: ${bearerToken ? "Bearer " + bearerToken.slice(0, 12) + "..." : "none"} | x-api-key: ${req.headers.get("x-api-key") ? "yes" : "no"} | apikey-hdr: ${req.headers.get("apikey") ? "yes" : "no"} | query: ${qp} | session: ${sessionId || "none"}`);
 
-      let authResult: { valid: boolean; error?: string; tier?: string; name?: string } = { valid: false };
-      let isDiscoveryRequest = false;
-
-      if (req.method === "POST" && !apiKey) {
-        try {
-          const cloned = req.clone();
-          const body = await cloned.json();
-          const method = body?.method;
-          if (method === "initialize" || method === "tools/list" || method === "notifications/initialized") {
-            isDiscoveryRequest = true;
-            authResult = { valid: true, tier: "discovery", name: "scanner" };
-          }
-        } catch {}
-      }
-
-      if (!isDiscoveryRequest) {
-        authResult = await validateApiKey(apiKey);
-      }
+      // Auth required on ALL MCP requests (including initialize).
+      // OAuth-capable clients get 401 + WWW-Authenticate → triggers OAuth 2.0 + PKCE flow.
+      // Scanners use /.well-known/mcp/server-card.json for tool discovery instead.
+      const authResult = await validateApiKey(apiKey);
 
       if (!authResult.valid) {
-        return Response.json(
-          {
+        console.log(`[MCP] AUTH FAILED: ${authResult.error} | key: ${apiKey ? apiKey.slice(0, 12) + "..." : "null"}`);
+        return new Response(JSON.stringify({
             jsonrpc: "2.0",
             error: { code: -32001, message: authResult.error },
             id: null,
-          },
-          { status: 401 }
+          }), {
+            status: 401,
+            headers: {
+              "Content-Type": "application/json",
+              ...corsHeaders,
+            },
+          }
         );
       }
 
-      const sessionId = req.headers.get("mcp-session-id");
+      // Check for existing session (POST with session ID)
 
       if (sessionId && transports[sessionId]) {
         const { transport } = transports[sessionId];
@@ -341,7 +414,7 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
             enableJsonResponse: true,
           });
 
-          const mcpServer = createMcpServer();
+          const mcpServer = createMcpServer(authResult.tier || "free");
           await mcpServer.connect(transport);
 
           if (apiKey) await recordUsage(apiKey);
@@ -436,7 +509,7 @@ if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) Bun.serve({
   },
 });
 
-if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN) console.log(`MCP Social Media Analytics server running on port ${PORT}`);
+if (typeof Bun !== "undefined" && !process.env.SMITHERY_SCAN && !process.argv.includes("--stdio")) console.log(`MCP Social Media Analytics server running on port ${PORT}`);
 
 process.on("SIGINT", async () => {
   console.log("Shutting down...");
