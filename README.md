@@ -6,6 +6,10 @@
 
 AI-powered social media analytics tools via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Give your AI assistant the ability to analyze profiles, score engagement, detect trends, and research hashtags across major platforms — all in real time.
 
+<a href="https://glama.ai/mcp/servers/@ezbiz-services/social-media-analytics">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@ezbiz-services/social-media-analytics/badge" alt="Social Media Analytics MCP server" />
+</a>
+
 ## Tools
 
 | Tool | Description |
